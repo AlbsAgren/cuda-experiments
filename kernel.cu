@@ -1,6 +1,7 @@
 #include "macro.h"
 
 #include<stdio.h>
+#include<chrono>
 
 __global__
 void vec_add_kernel(float* A, float* B, float* C, int n) {
@@ -11,7 +12,13 @@ void vec_add_kernel(float* A, float* B, float* C, int n) {
     }
 }
 
-void vec_add(float* A_h, float* B_h, float* C_h, int n) {
+void vec_add_host(float* A, float* B, float* C, int n) {
+    for(int i = 0; i < n; i++) {
+        C[i] = A[i] + B[i];
+    }
+}
+
+void vec_add_cuda(float* A_h, float* B_h, float* C_h, int n) {
     int size = n * sizeof(float);
     float *A_d;
     float *B_d;
@@ -52,15 +59,22 @@ void print_array(float* array, int size) {
 }
 
 int main() {
-    int size = 10;
-    float A_h[size];
-    float B_h[size];
-    float C_h[size];
+    int size = 100'000'000;
+    float* A_h = (float*)malloc(sizeof(float) * size);
+    float* B_h = (float*)malloc(sizeof(float) * size);
+    float* C_h = (float*)malloc(sizeof(float) * size);
 
     fill_array_with_random_floats(A_h, size);
     fill_array_with_random_floats(B_h, size);
 
-    vec_add(A_h, B_h, C_h, size);
+    // warmup run
+    vec_add_cuda(A_h, B_h, C_h, size);
 
-    print_array(C_h, size);
+    HOST_TIME(vec_add_host(A_h, B_h, C_h, size));
+
+    CUDA_TIME(vec_add_cuda(A_h, B_h, C_h, size));
+
+    free(A_h);
+    free(B_h);
+    free(C_h);
 }
